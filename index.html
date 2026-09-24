@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Face Kart">
+<meta name="theme-color" content="#05070d">
 <title>Turbo Face Kart</title>
 <link rel="icon" href="data:,">
 <style>
@@ -69,6 +74,25 @@ kbd{display:inline-block;background:#222a48;border:1px solid #47548a;border-bott
 #toast{position:absolute;left:50%;bottom:1em;transform:translateX(-50%);background:rgba(0,0,0,.8);padding:.4em 1em;border-radius:.5em;font-weight:700;font-size:.85em;opacity:0;transition:opacity .3s;pointer-events:none}
 #toast.on{opacity:1}
 .hint{font-size:.75em;color:var(--mute);text-align:center;margin-top:.5em}
+/* phones and tablets: dynamic viewport height, no zoom or scroll, on-screen controls */
+@supports (height:100dvh){#wrap{width:min(100vw,177.78dvh);height:min(56.25vw,100dvh)}}
+html,body{overscroll-behavior:none;touch-action:none;-webkit-tap-highlight-color:transparent}
+#touch{position:fixed;inset:0;display:none;z-index:5;pointer-events:none}
+body.touch.racing #touch{display:block}
+#tSteer{position:absolute;left:0;top:0;bottom:0;width:50%;pointer-events:auto}
+#tStick{position:absolute;width:22vmin;height:22vmin;margin:-11vmin 0 0 -11vmin;border-radius:50%;border:2px solid rgba(255,255,255,.5);background:rgba(20,24,40,.25);display:none;pointer-events:none}
+#tKnob{position:absolute;left:50%;top:50%;width:9vmin;height:9vmin;margin:-4.5vmin 0 0 -4.5vmin;border-radius:50%;background:rgba(255,255,255,.75)}
+#touch .tb{position:absolute;pointer-events:auto;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-style:italic;color:#fff;background:rgba(20,24,40,.45);border:2px solid rgba(255,255,255,.55);text-shadow:0 1px 3px #000;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#touch .tb.on{background:rgba(255,204,0,.6);border-color:#ffcc00}
+#tDrift{width:24vmin;height:24vmin;right:calc(3vmin + env(safe-area-inset-right));bottom:calc(4vmin + env(safe-area-inset-bottom));font-size:4.4vmin}
+#tItem{width:17vmin;height:17vmin;right:calc(28vmin + env(safe-area-inset-right));bottom:calc(19vmin + env(safe-area-inset-bottom));font-size:3.4vmin}
+#tBrake{width:14vmin;height:14vmin;right:calc(29vmin + env(safe-area-inset-right));bottom:calc(2.5vmin + env(safe-area-inset-bottom));font-size:3vmin}
+#tSwap{width:11vmin;height:11vmin;right:calc(9vmin + env(safe-area-inset-right));bottom:calc(31vmin + env(safe-area-inset-bottom));font-size:2.6vmin}
+#tPause{width:10vmin;height:10vmin;left:calc(2vmin + env(safe-area-inset-left));top:calc(2vmin + env(safe-area-inset-top));border-radius:2.5vmin!important;font-size:3.6vmin}
+#rotate{position:fixed;inset:0;z-index:20;display:none;background:#05070d;color:#fff;align-items:center;justify-content:center;flex-direction:column;text-align:center;font-weight:800;font-size:18px;padding:2em}
+@media (orientation:portrait){body.touch #rotate{display:flex}}
+#fsBtn{display:none}body.touch #fsBtn{display:inline-block}
+body.touch .kbonly{display:none}.tonly{display:none}body.touch .tonly{display:block}
 </style>
 </head>
 <body>
@@ -80,7 +104,7 @@ kbd{display:inline-block;background:#222a48;border:1px solid #47548a;border-bott
     <div class="logo">TURBO<br>FACE KART</div>
     <div class="tag">Put your face in the driver's seat. Four worlds. Five rivals. One trophy.</div>
     <div class="row"><button class="btn" data-act="play">Play</button></div>
-    <div class="row"><button class="btn alt small" data-go="board">Leaderboard</button><button class="btn alt small" data-go="help">How to play</button><button class="btn alt small" data-act="mute" id="muteBtn">Sound: on</button></div>
+    <div class="row"><button class="btn alt small" data-go="board">Leaderboard</button><button class="btn alt small" data-go="help">How to play</button><button class="btn alt small" data-act="mute" id="muteBtn">Sound: on</button><button class="btn alt small" data-act="fs" id="fsBtn">Full screen</button></div>
   </div>
 
   <div id="garage" class="screen dim">
@@ -140,7 +164,8 @@ kbd{display:inline-block;background:#222a48;border:1px solid #47548a;border-bott
         <div><kbd>Esc</kbd><kbd>P</kbd></div><div>Pause</div>
         <div><kbd>M</kbd> <kbd>F</kbd></div><div>Mute. Show frame rate</div>
       </div>
-      <p class="desc" style="margin-top:.8em">Hold accelerate during the "1" of the countdown for a rocket start. Yellow arrow pads give a free boost. Gamepads work too (A gas, B brake, RB drift, LB or X item).</p>
+      <p class="desc tonly" style="margin-top:.8em">On a phone: drag anywhere on the left half to steer. Your kart speeds up by itself. Hold DRIFT through a turn and let go for a turbo, tap ITEM to fire, hold BRAKE to slow down or reverse, tap SWAP to switch items, and tap II to pause.</p>
+      <p class="desc kbonly" style="margin-top:.8em">Hold accelerate during the "1" of the countdown for a rocket start. Yellow arrow pads give a free boost. Gamepads work too (A gas, B brake, RB drift, LB or X item).</p>
       <div class="row"><button class="btn alt" data-back="1">Back</button></div>
     </div>
   </div>
@@ -177,6 +202,9 @@ kbd{display:inline-block;background:#222a48;border:1px solid #47548a;border-bott
   <div id="toast"></div>
 </div>
 </div>
+<div id="touch"><div id="tSteer"><div id="tStick"><div id="tKnob"></div></div></div>
+ <div class="tb" id="tPause">II</div><div class="tb" id="tSwap">SWAP</div><div class="tb" id="tItem">ITEM</div><div class="tb" id="tBrake">BRAKE</div><div class="tb" id="tDrift">DRIFT</div></div>
+<div id="rotate"><div style="font-size:3.5em;line-height:1">&#8635;</div><p>Turn your phone sideways to race.</p></div>
 
 <script>
 'use strict';
@@ -615,7 +643,7 @@ const G={race:null,mode:'menu',paused:false,quality:Store.get('fk.q',1),showFps:
 let RSCALE=1;
 function setQuality(q){
  G.quality=q;Store.set('fk.q',q);
- RSCALE=q?Math.min(window.devicePixelRatio||1,1.75):0.7;
+ RSCALE=q?Math.min(window.devicePixelRatio||1,TOUCH.on?1.3:1.75):(TOUCH.on?0.6:0.7);
  $('qualBtn').textContent='Detail: '+(q?'High':'Low');sizeCanvases();
 }
 function sizeCanvases(){
@@ -1540,7 +1568,8 @@ const Input={
   const L=KEYS.ArrowLeft||KEYS.KeyA,Rt=KEYS.ArrowRight||KEYS.KeyD,U=KEYS.ArrowUp||KEYS.KeyW,D=KEYS.ArrowDown||KEYS.KeyS;
   let steer=(Rt?1:0)-(L?1:0),thr=(U?1:0)-(D?1:0);
   if(Math.abs(this.pad.steer)>Math.abs(steer))steer=this.pad.steer;if(this.pad.thr!==0&&thr===0)thr=this.pad.thr;
-  const drift=!!(KEYS.ShiftLeft||KEYS.ShiftRight||KEYS.Space||KEYS.KeyX||this.pad.drift);
+  let drift=!!(KEYS.ShiftLeft||KEYS.ShiftRight||KEYS.Space||KEYS.KeyX||this.pad.drift);
+  if(TOUCH.on){if(TOUCH.steer)steer=TOUCH.steer;if(TOUCH.brake)thr=-1;else if(thr===0&&G.race&&G.race.state!=='countdown')thr=1;if(TOUCH.drift)drift=true;}
   const s={steer,thr,drift,fire:this.fireQ,swap:this.swapQ};return s;
  },
  consume(){this.fireQ=false;this.swapQ=false;},
@@ -1599,16 +1628,16 @@ function drawHUD(race){
  ctx.beginPath();ctx.roundRect(ix+88,iy+18,52,52,10);ctx.fill();ctx.stroke();
  const drawSlot=(it,x,y,s)=>{if(!it)return;let t=it.t;if(it.roll>0)t=Object.keys(ITEMS)[((performance.now()/70)|0)%7];ctx.drawImage(iconCanvas(t,64),x,y,s,s);if(it.n>1&&it.roll<=0)txt('x'+it.n,x+s-4,y+s,18,'#fff','right');};
  drawSlot(p.items[0],ix+7,iy+7,64);drawSlot(p.items[1],ix+94,iy+24,40);
- txt('E',ix+4,iy+94,14,'#ffcc00');txt('Q swap',ix+88,iy+86,12,'#cfd8ea');
+ if(!TOUCH.on){txt('E',ix+4,iy+94,14,'#ffcc00');txt('Q swap',ix+88,iy+86,12,'#cfd8ea');}
  if(p.items[0]&&p.items[0].roll<=0)txt(ITEMS[p.items[0].t].name,ix+39,iy+112,15,'#fff','center');
  // speed + drift
- const spd=Math.round(p.speed()*0.9);txt(String(spd),W-80,H-30,56,'#fff','right');txt('km/h',W-18,H-32,18,'#cfd8ea','right');
+ const spd=Math.round(p.speed()*0.9);if(TOUCH.on){txt(String(spd),W-62,200,40,'#fff','right');txt('km/h',W-18,199,15,'#cfd8ea','right');}else{txt(String(spd),W-80,H-30,56,'#fff','right');txt('km/h',W-18,H-32,18,'#cfd8ea','right');}
  if(p.drifting){const c=p.charge,col=c>=1.8?'#ff8a1a':c>=0.85?'#4aa8ff':'#ffffff',w=Math.min(1,c/1.8)*160;ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(W-178,H-100,160,10);ctx.fillStyle=col;ctx.fillRect(W-178,H-100,w,10);txt('DRIFT',W-178,H-106,14,col);}
  if(p.starT>0)txt('STAR '+p.starT.toFixed(1),W-18,H-112,18,'#ffd400','right');
  // countdown
  if(race.state==='countdown'){const n=Math.ceil(race.cd);if(n<=3){const f=race.cd-Math.floor(race.cd);txt(String(n),W/2,150,90+f*50,'#fff','center');}
   for(let i=0;i<3;i++){const on=race.cd<=3-i+0.01&&race.cd<3.6;ctx.fillStyle='#111';ctx.beginPath();ctx.roundRect(W/2-66+i*46,170,40,40,20);ctx.fill();ctx.fillStyle=on?(race.cd<1?'#3dff6a':'#ff3030'):'#442222';ctx.beginPath();ctx.arc(W/2-46+i*46,190,15,0,TAU);ctx.fill();}}
- if(race.t<8&&race.state!=='finished')txt('Arrows/WASD drive  Shift drift  E item  Q swap  Esc pause',W/2,H-14,16,'rgba(255,255,255,.85)','center');
+ if(race.t<8&&race.state!=='finished')txt(TOUCH.on?'Drag left side to steer  Hold DRIFT in turns  Tap ITEM to fire':'Arrows/WASD drive  Shift drift  E item  Q swap  Esc pause',W/2,H-14,16,'rgba(255,255,255,.85)','center');
  if(p.wrongT>1&&((race.t*3)|0)%2)txt('WRONG WAY',W/2,H/2+60,54,'#ff3d6e','center');
  // messages
  let my=H/2-40;for(const m of race.msgs){const a=Math.min(1,m.t*3),sc=1+Math.max(0,(m.t-m.max+0.2))*2;ctx.globalAlpha=a;txt(m.text,W/2,my,m.size*sc,m.col,'center');ctx.globalAlpha=1;my+=m.size*0.9;}
@@ -1643,7 +1672,7 @@ function drawPreview(t){
 const UI={cur:'title',prev:'title'};
 function show(id){if(id!==UI.cur)UI.prev=UI.cur;UI.cur=id;document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
  if(id==='garage')buildGarage();if(id==='worlds')buildWorlds();if(id==='board')buildBoard(UI.boardW||0);}
-function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2600);}
+function toast(m,ms){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),ms||2600);}
 function toggleMute(){SFX.init();SFX.setMuted(!SFX.muted);$('muteBtn').textContent='Sound: '+(SFX.muted?'off':'on');}
 function togglePause(){
  if(G.mode!=='race'||!G.race||G.race.resultsShown)return;
@@ -1651,7 +1680,7 @@ function togglePause(){
 }
 function startMenu(){G.mode='menu';G.paused=false;setRace(new Race(0,true));show('title');prebuildGarage();if(SFX.ctx)SFX.startMusic(0,true);}
 function startRace(wi){
- if(document.activeElement)document.activeElement.blur();
+ goFull();if(document.activeElement)document.activeElement.blur();
  show('loading');G.paused=false;
  setTimeout(()=>{setRace(new Race(wi,false));G.mode='race';
   if(gl&&GLOK){const r=G.race;ensureTrackGL(r.trk);r.karts.forEach(ensureKartGL);sizeCanvases();render3D(r);gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,PX1);}
@@ -1659,8 +1688,9 @@ function startRace(wi){
 }
 function act(a){
  SFX.init();SFX.play('click');
- if(a==='play'){if(!SFX.mtimer)SFX.startMusic(0,true);show('garage');}
+ if(a==='play'){goFull();if(!SFX.mtimer)SFX.startMusic(0,true);show('garage');}
  else if(a==='mute')toggleMute();
+ else if(a==='fs')goFull(true);
  else if(a==='resume')togglePause();
  else if(a==='restart'){if(G.race&&!G.race.demo)startRace(G.race.wi);}
  else if(a==='next'){if(G.race)startRace((G.race.wi+1)%WORLDS.length);}
@@ -1736,6 +1766,36 @@ function showResults(race){
  show('results');
 }
 
+// ================= touch / mobile (switches on by itself on phones and tablets) =================
+const TOUCH={on:false,steer:0,drift:false,brake:false,id:null,x0:0};
+const IOS=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Macintosh/.test(navigator.userAgent));
+function isMobile(){return matchMedia('(pointer:coarse)').matches||IOS||/Android|Mobile/i.test(navigator.userAgent);}
+function enableTouch(){if(TOUCH.on)return;TOUCH.on=true;document.body.classList.add('touch');if(typeof RSCALE!=='undefined')setQuality(G.quality);}
+function goFull(force){
+ if(!TOUCH.on&&!force)return;const d=document.documentElement,rq=d.requestFullscreen||d.webkitRequestFullscreen;
+ if(document.fullscreenElement||document.webkitFullscreenElement||navigator.standalone)return;
+ if(rq){try{const p=rq.call(d,{navigationUI:'hide'});const lock=()=>{try{screen.orientation.lock('landscape').catch(()=>{});}catch(e){}};if(p&&p.then)p.then(lock).catch(()=>{});else lock();}catch(e){}}
+ else if(IOS&&(force||!Store.get('fk.ioshint',false))){Store.set('fk.ioshint',true);toast('For full screen on iPhone: tap Share, then Add to Home Screen, then open Face Kart from your home screen.',6000);}
+}
+(()=>{
+ const tS=$('tSteer'),stick=$('tStick'),knob=$('tKnob'),pe={passive:false};
+ tS.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];TOUCH.id=t.identifier;TOUCH.x0=t.clientX;TOUCH.steer=0;stick.style.display='block';stick.style.left=t.clientX+'px';stick.style.top=t.clientY+'px';knob.style.transform='';},pe);
+ tS.addEventListener('touchmove',e=>{e.preventDefault();for(const t of e.changedTouches)if(t.identifier===TOUCH.id){const r=Math.min(innerWidth,innerHeight)*0.11,dx=clamp(t.clientX-TOUCH.x0,-r,r),v=dx/r;TOUCH.steer=Math.abs(v)<0.1?0:Math.sign(v)*Math.pow(Math.abs(v),1.2);knob.style.transform='translateX('+dx+'px)';}},pe);
+ const endS=e=>{for(const t of e.changedTouches)if(t.identifier===TOUCH.id){TOUCH.id=null;TOUCH.steer=0;stick.style.display='none';}};
+ tS.addEventListener('touchend',endS);tS.addEventListener('touchcancel',endS);
+ const hold=(id,k)=>{const el=$(id),on=e=>{e.preventDefault();SFX.init();TOUCH[k]=true;el.classList.add('on');},off=e=>{e.preventDefault();TOUCH[k]=false;el.classList.remove('on');};el.addEventListener('touchstart',on,pe);el.addEventListener('touchend',off,pe);el.addEventListener('touchcancel',off,pe);};
+ hold('tDrift','drift');hold('tBrake','brake');
+ const tap=(id,fn)=>{const el=$(id);el.addEventListener('touchstart',e=>{e.preventDefault();fn();el.classList.add('on');setTimeout(()=>el.classList.remove('on'),130);},pe);};
+ const live=()=>G.mode==='race'&&!G.paused;
+ tap('tItem',()=>{if(live())Input.fireQ=true;});tap('tSwap',()=>{if(live())Input.swapQ=true;});tap('tPause',()=>togglePause());
+ // home screen icon for Add to Home Screen
+ try{const c=mkCanvas(180,180),x=c.getContext('2d'),g=x.createLinearGradient(0,0,0,180);g.addColorStop(0,'#ffe066');g.addColorStop(1,'#ff3d6e');x.fillStyle=g;x.fillRect(0,0,180,180);x.drawImage(makeHead(cartoonFace(4242),'#e8333a'),30,22,120,120);x.fillStyle='#fff';x.font='italic 900 30px system-ui';x.textAlign='center';x.fillText('KART',90,170);const l=document.createElement('link');l.rel='apple-touch-icon';l.href=c.toDataURL();document.head.appendChild(l);}catch(e){}
+ if(isMobile())enableTouch();
+ window.addEventListener('touchstart',enableTouch,{passive:true});
+})();
+let RACING_CLS=false;
+function syncTouchUI(){const r=G.mode==='race'&&!G.paused&&!!G.race&&!G.race.resultsShown&&UI.cur==null;if(r!==RACING_CLS){RACING_CLS=r;document.body.classList.toggle('racing',r);if(!r){TOUCH.steer=0;TOUCH.drift=TOUCH.brake=false;TOUCH.id=null;$('tStick').style.display='none';document.querySelectorAll('#touch .tb').forEach(b=>b.classList.remove('on'));}}}
+
 // ================= main loop =================
 function resize(){const wr=$('wrap');document.documentElement.style.setProperty('--fs',(wr.clientWidth/960*16)+'px');if(typeof sizeCanvases==='function')sizeCanvases();}
 window.addEventListener('resize',resize);resize();
@@ -1756,7 +1816,7 @@ function frame(now){
  let dt=(now-last)/1000;last=now;if(dt>0.1)dt=0.1;
  fpsAcc+=dt;fpsN++;if(fpsAcc>=0.5){G.fps=fpsN/fpsAcc;fpsAcc=0;fpsN=0;
   if(G.mode==='race'&&!G.paused&&G.quality===1&&!G.autoDropped){if(G.fps<45&&frameSlow())G.lowT+=0.5;else G.lowT=0;if(G.lowT>=3){G.autoDropped=true;setQuality(0);toast('Frame rate was low, switched to low detail. Change it in the pause menu.');}}}
- pollPad();
+ pollPad();syncTouchUI();
  const race=G.race;
  if(race&&!G.paused){acc+=dt;let n=0;while(acc>=STEP&&n<14){race.update(STEP);acc-=STEP;n++;Input.consume();}if(n>=14)acc=0;}
  if(!gl||!GLOK||gl.isContextLost())return;
