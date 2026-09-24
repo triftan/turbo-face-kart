@@ -119,7 +119,7 @@ body.touch .kbonly{display:none}.tonly{display:none}body.touch .tonly{display:bl
             <button class="btn small alt" id="faceclear">Default</button>
           </div>
         </div>
-        <input type="text" id="pname" maxlength="12" placeholder="Your name">
+        <input type="text" id="pname" maxlength="12" placeholder="Your name (shown on the world board)">
         <div class="hint">Use a photo where your face fills the middle of the frame. It stays on this device.</div>
       </div>
       <div class="gright">
@@ -1736,32 +1736,48 @@ function miniCanvas(wi,w,h){
 }
 function buildWorlds(){
  const el=$('worldlist');el.innerHTML='';
- WORLDS.forEach((w,i)=>{const lb=lbGet(i),best=lb.length?fmtTime(lb[0].time)+' by '+esc(lb[0].name):'No times yet';
-  const d=document.createElement('div');d.className='wcard';d.innerHTML='<div class="wi"><b>'+esc(w.name)+'</b><div class="stars">'+'&#9733;'.repeat(w.stars)+'<span style="opacity:.25">'+'&#9733;'.repeat(4-w.stars)+'</span></div><small>'+esc(w.blurb)+'</small><small>Best: '+best+'</small></div>';
+ const bestOf=i=>{const lb=ONLINE.ok&&ONLINE.worlds?ONLINE.worlds[WORLDS[i].id]:lbGet(i);return lb&&lb.length?fmtTime(lb[0].time)+' by '+esc(lb[0].name):'No times yet';};
+ WORLDS.forEach((w,i)=>{const best=bestOf(i);
+  const d=document.createElement('div');d.className='wcard';d.innerHTML='<div class="wi"><b>'+esc(w.name)+'</b><div class="stars">'+'&#9733;'.repeat(w.stars)+'<span style="opacity:.25">'+'&#9733;'.repeat(4-w.stars)+'</span></div><small>'+esc(w.blurb)+'</small><small id="wbest'+i+'">Best: '+best+'</small></div>';
   d.insertBefore(miniCanvas(i,250,180),d.firstChild);d.onclick=()=>{SFX.play('click');startRace(i);};el.appendChild(d);});
+ lbFetchAll().then(()=>{if(UI.cur==='worlds')WORLDS.forEach((w,i)=>{const e=$('wbest'+i);if(e)e.innerHTML='World best: '+bestOf(i);});});
 }
-function boardTable(wi,hi){
- const lb=lbGet(wi);if(!lb.length)return '<p class="desc" style="text-align:center">No times yet. Be the first.</p>';
- return '<table><tr><th>#</th><th>Driver</th><th>Time</th><th>Best lap</th><th>Place</th><th>Kart</th></tr>'+lb.map((e,i)=>'<tr class="'+(i===hi?'new':'')+'"><td>'+(i+1)+'</td><td>'+esc(e.name)+'</td><td>'+fmtTime(e.time)+'</td><td>'+fmtTime(e.lap)+'</td><td>'+ordinal(e.place)+'</td><td>'+esc(e.kart)+'</td></tr>').join('')+'</table>';
+// ---- online leaderboard: a Vercel function backed by Neon Postgres; the per-device board stays as the offline fallback ----
+const LB_API=(/^https?:$/.test(location.protocol)&&!/github\.io$|^localhost$|^127\./.test(location.hostname)?'':'https://turbo-face-kart.vercel.app')+'/api/leaderboard';
+const ONLINE={worlds:null,ok:null};
+function lbReq(opt){const c=new AbortController(),t=setTimeout(()=>c.abort(),7000);return fetch(LB_API+(opt&&opt.q||''),{method:opt&&opt.body?'POST':'GET',headers:opt&&opt.body?{'Content-Type':'application/json'}:undefined,body:opt&&opt.body?JSON.stringify(opt.body):undefined,cache:'no-store',signal:c.signal}).then(r=>r.json().then(j=>{clearTimeout(t);if(!r.ok)throw Object.assign(new Error(j.error||'error'),{status:r.status});return j;}));}
+function lbFetchAll(){return lbReq().then(j=>{ONLINE.worlds=j.worlds;ONLINE.ok=true;return j.worlds;}).catch(()=>{ONLINE.ok=false;return null;});}
+function lbSubmit(wi,e){return lbReq({body:{world:WORLDS[wi].id,name:e.name,time:e.time,lap:e.lap,place:e.place,kart:e.kart}});}
+function boardTable(list,hi,note){
+ const n=note?'<p class="desc" style="text-align:center;margin:.2em 0 .4em">'+note+'</p>':'';
+ if(!list||!list.length)return n+'<p class="desc" style="text-align:center">No times yet. Be the first.</p>';
+ return n+'<table><tr><th>#</th><th>Driver</th><th>Time</th><th>Best lap</th><th>Place</th><th>Kart</th></tr>'+list.map((e,i)=>'<tr class="'+(i===hi?'new':'')+'"><td>'+(i+1)+'</td><td>'+esc(e.name)+'</td><td>'+fmtTime(e.time)+'</td><td>'+fmtTime(e.lap)+'</td><td>'+ordinal(e.place)+'</td><td>'+esc(e.kart)+'</td></tr>').join('')+'</table>';
 }
 function buildBoard(wi){
  UI.boardW=wi;const tabs=$('boardtabs');tabs.innerHTML='';
  WORLDS.forEach((w,i)=>{const b=document.createElement('button');b.className='btn small'+(i===wi?'':' alt');b.textContent=w.name;b.onclick=()=>{SFX.play('click');buildBoard(i);};tabs.appendChild(b);});
- $('boardtable').innerHTML=boardTable(wi,-1);
+ const id=WORLDS[wi].id,paint=()=>{if(UI.cur!=='board'||UI.boardW!==wi)return;
+  $('boardtable').innerHTML=ONLINE.ok&&ONLINE.worlds?boardTable(ONLINE.worlds[id],-1,'World top 10, everyone who plays'):ONLINE.ok===false?boardTable(lbGet(wi),-1,'Offline. Showing times saved on this device.'):boardTable(null,-1,'Loading world times...');};
+ paint();lbFetchAll().then(paint);
 }
 function showResults(race){
  const p=race.player,place=p.fplace,win=place<=3,wi=race.wi;
  const best=Math.min(...p.lapTimes);
- const entry={name:CFG.name||'You',time:p.finishTime,lap:best,place,kart:KARTS[p.type].name,date:new Date().toLocaleDateString()};
+ const entry={name:CFG.name||'Racer',time:p.finishTime,lap:best,place,kart:KARTS[p.type].name,date:new Date().toLocaleDateString()};
  const rank=lbAdd(wi,entry);
  $('reshead').innerHTML='<p class="big '+(win?'win':'lose')+'">'+(place===1?'YOU WIN!':win?'PODIUM!':'YOU LOSE')+'</p><p style="text-align:center;margin:.3em 0 0;font-weight:800">'+
-  (win?'You finished '+ordinal(place)+' on '+esc(race.w.name)+'.':'You finished '+ordinal(place)+'. Top 3 wins. Try again?')+(rank>=0?' <span style="color:#ffcc00">New #'+(rank+1)+' time!</span>':'')+'</p>';
+  (win?'You finished '+ordinal(place)+' on '+esc(race.w.name)+'.':'You finished '+ordinal(place)+'. Top 3 wins. Try again?')+' <span id="rankNote" style="color:#ffcc00"></span></p>';
  // standings with estimated times for karts still racing
  const T=race.trk,rows=race.order.map(k=>{let t=k.finishTime,est=false;if(t==null){const done=Math.max(0.01,k.progress()/(T.N*race.laps));t=race.raceTime/done;t=Math.max(t,race.raceTime+0.5);est=true;}return{k,t,est};});
  rows.sort((a,b)=>a.t-b.t);
  $('resrace').innerHTML='<table><tr><th>#</th><th>Driver</th><th>Time</th></tr>'+rows.map((r,i)=>'<tr class="'+(r.k.isPlayer?'me':'')+'"><td>'+(i+1)+'</td><td>'+esc(r.k.isPlayer?(CFG.name||'You'):r.k.name)+'</td><td>'+(r.est?'~':'')+fmtTime(r.t)+'</td></tr>').join('')+'</table>'+
   '<p class="desc">Laps: '+p.lapTimes.map(fmtTime).join(' / ')+'<br>Hits landed: '+p.hitsGiven+'</p>';
- $('resworld').textContent=race.w.name;$('resboard').innerHTML=boardTable(wi,rank);
+ $('resworld').textContent=race.w.name;$('resboard').innerHTML=boardTable(null,-1,'Posting your time to the world board...');
+ const tok=showResults.tok=(showResults.tok||0)+1;
+ lbSubmit(wi,entry).then(r=>{if(tok!==showResults.tok)return;const hi=r.top.findIndex(e=>String(e.id)===String(r.id));
+   $('resboard').innerHTML=boardTable(r.top,hi,'World top 10');$('rankNote').textContent=' World rank #'+r.rank+' of '+r.total+(r.rank<=10?'. You made the top 10!':'.');
+   if(ONLINE.worlds)ONLINE.worlds[WORLDS[wi].id]=r.top;})
+  .catch(e=>{if(tok!==showResults.tok)return;$('resboard').innerHTML=boardTable(lbGet(wi),rank,e&&e.status===429?'Saved on this device. The world board takes one time every 15 seconds.':'Could not reach the world board. Saved on this device.');if(rank>=0)$('rankNote').textContent=' New #'+(rank+1)+' on this device!';});
  $('nextBtn').style.display=win&&wi<WORLDS.length-1?'':'none';
  show('results');
 }
